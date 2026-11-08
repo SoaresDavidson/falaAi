@@ -10,6 +10,7 @@ dependencies = [
     "google-api-python-client",
     "google-auth-oauthlib",
     "markdownify",
+    "beautifulsoup4",
     "feedgen",
     "prometheus-client",
 ]
