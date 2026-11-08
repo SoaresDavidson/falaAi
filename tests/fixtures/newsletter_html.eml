@@ -1,0 +1,24 @@
+From: =?utf-8?q?Boletim_Tech?= <boletim@exemplo.com>
+To: eu@exemplo.com
+Subject: =?utf-8?q?Not=C3=ADcias_do_dia?=
+Date: Sat, 08 Nov 2026 07:30:00 -0300
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="XX"
+
+--XX
+Content-Type: text/plain; charset=utf-8
+
+Versao em texto puro.
+
+--XX
+Content-Type: text/html; charset=utf-8
+
+<html><head><style>p{color:red}</style><script>x()</script></head><body>
+<h2>Destaques</h2>
+<p><a href="https://exemplo.com/a">Primeira noticia</a> sobre chips.</p>
+<p><a href="https://exemplo.com/b">Segunda noticia</a> sobre robos.</p>
+<a href="https://exemplo.com/vazio"><img src="https://track.exemplo.com/pixel.gif"></a>
+<img src="https://track.exemplo.com/pixel.gif" width="1" height="1">
+</body></html>
+
+--XX--
