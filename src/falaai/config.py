@@ -11,6 +11,8 @@ class Config:
     ollama_modelo: str = "qwen3:30b-a3b-instruct-2507-q4_K_M"
     tts_url: str = "http://100.74.37.102:8880"
     gmail_rotulo: str = "newsletter"
+    # Aplicado às Newsletters de um Episódio publicado; quem tem esse rótulo não é mais pendente.
+    gmail_rotulo_processada: str = "falaai-processada"
     gmail_token: Path = Path("/data/gmail-token.json")
     max_minutos: int = 15
     palavras_por_minuto: int = 150

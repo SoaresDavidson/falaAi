@@ -73,9 +73,20 @@ def newsletter_de_mime(gmail_id: str, raw: bytes, max_chars: int) -> Newsletter:
     )
 
 
-def consulta(rotulo: str, dia: date | None, janela_dias: int, fuso: tzinfo) -> str:
-    """Busca do Gmail: as pendentes de um dia no fuso dado, ou as dos últimos N dias."""
-    q = f"label:{rotulo} in:inbox"
+def _termo_rotulo(nome: str) -> str:
+    # Na busca do Gmail, espaços e "/" do nome do rótulo viram "-".
+    return re.sub(r"[\s/]+", "-", nome)
+
+
+def consulta(
+    rotulo: str, processada: str, dia: date | None, janela_dias: int, fuso: tzinfo
+) -> str:
+    """Busca do Gmail: as pendentes de um dia no fuso dado, ou as dos últimos N dias.
+
+    Pendente é ter o rótulo das Newsletters e não ter o de processada (ADR-0004), esteja ou não na
+    Caixa de entrada.
+    """
+    q = f"label:{_termo_rotulo(rotulo)} -label:{_termo_rotulo(processada)}"
     if dia is not None:
         # Epoch em segundos: `after:AAAA/MM/DD` usaria o fuso do Pacífico.
         inicio = datetime.combine(dia, time(), fuso)
@@ -95,9 +106,11 @@ class GmailFonte:
         servico=None,
         janela_dias: int = 0,
         fuso: tzinfo = UTC,
+        rotulo_processada: str = "falaai-processada",
     ):
         self.token_path = token_path
         self.rotulo = rotulo
+        self.rotulo_processada = rotulo_processada
         self.max_chars = max_chars
         self.janela_dias = janela_dias
         self.fuso = fuso
@@ -126,7 +139,7 @@ class GmailFonte:
         return self._servico
 
     def pendentes(self, dia: date | None = None) -> list[Newsletter]:
-        q = consulta(self.rotulo, dia, self.janela_dias, self.fuso)
+        q = consulta(self.rotulo, self.rotulo_processada, dia, self.janela_dias, self.fuso)
         msgs = self._svc().users().messages()
         ids: list[str] = []
         token = None
@@ -147,16 +160,34 @@ class GmailFonte:
                 out.append(newsletter_de_mime(i, raw, self.max_chars))
             except Exception:
                 log.exception(
-                    "Falha ao processar a mensagem %s; ela continua na caixa de entrada", i
+                    "Falha ao processar a mensagem %s; ela continua pendente", i
                 )
         if ids and not out:
             raise RuntimeError(f"todas as {len(ids)} mensagens falharam ao ser lidas")
         return sorted(out, key=lambda n: n.recebida_em)
 
+    def _id_rotulo_processada(self) -> str:
+        labels = self._svc().users().labels()
+        for label in labels.list(userId="me").execute().get("labels", []):
+            if label["name"] == self.rotulo_processada:
+                return label["id"]
+        corpo = {
+            "name": self.rotulo_processada,
+            "labelListVisibility": "labelShow",
+            "messageListVisibility": "show",
+        }
+        log.info("Criando o rótulo %s no Gmail", self.rotulo_processada)
+        return labels.create(userId="me", body=corpo).execute()["id"]
+
     def arquivar(self, gmail_ids: Sequence[str]) -> None:
+        """Marca como processadas: aplica o rótulo de processada e tira da Caixa de entrada."""
         if not gmail_ids:
             return
-        body = {"ids": list(gmail_ids), "removeLabelIds": ["INBOX"]}
+        body = {
+            "ids": list(gmail_ids),
+            "addLabelIds": [self._id_rotulo_processada()],
+            "removeLabelIds": ["INBOX"],
+        }
         self._svc().users().messages().batchModify(userId="me", body=body).execute()
 
 

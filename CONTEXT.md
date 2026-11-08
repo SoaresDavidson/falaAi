@@ -7,7 +7,7 @@ Serviço pessoal que lê newsletters do Gmail e as converte em um podcast diári
 ### Entrada
 
 **Newsletter**:
-Um email recebido de um remetente assinado, identificado pela label `newsletter` do Gmail. Está pendente até virar parte de um Episódio publicado; depois disso, é arquivada.
+Um email recebido de um remetente assinado, identificado pela label `newsletter` do Gmail. Está pendente até virar parte de um Episódio publicado; depois disso, recebe a label `falaai-processada` (ADR-0004).
 _Avoid_: Email, mensagem
 
 **Item**:

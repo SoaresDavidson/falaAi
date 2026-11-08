@@ -60,6 +60,7 @@ def montar_dependencias(config: Config) -> Dependencias:
             config.texto_max_chars,
             janela_dias=config.gmail_janela_dias,
             fuso=fuso,
+            rotulo_processada=config.gmail_rotulo_processada,
         ),
         llm=OllamaLlm(config.ollama_url, config.ollama_modelo),
         tts=KokoroTts(config.tts_url),
