@@ -7,9 +7,9 @@ O servidor (`jessejamesserver`, i7-4980HQ, 15 GB de RAM, sem GPU utilizável, ~8
 - **LLM em CPU no servidor**: rejeitado pela qualidade do Roteiro e pelo risco de memória.
 - **Pipeline inteiro como CLI no laptop, enviando o resultado ao servidor**: rejeitado porque divide o estado entre duas máquinas e dificulta métricas e alertas.
 - **Entregar o Roteiro ao laptop por uma pasta do Nextcloud**: rejeitado porque a sincronização não sinaliza arquivo completo, não devolve erros ao servidor e exige um daemon vigiando a pasta.
-- **Esperar ou fazer polling até o laptop ficar online**: rejeitado em favor de Job manual (`POST /jobs`), já que quem dispara o Job sabe se o laptop está ligado.
+- **Agendar o Job no servidor, esperando ou fazendo polling até o laptop ficar online**: rejeitado. Quem dispara é o próprio laptop (timer systemd diário com `Persistent=true`, que roda assim que ele volta a ficar ligado), ou uma pessoa com `POST /jobs`.
 
 ## Consequences
 
-- Sem o laptop online não há Episódio. Por isso o Job é manual e não agendado.
+- Sem o laptop online não há Episódio. Por isso o agendamento fica no laptop: um timer perdido dispara no próximo boot ou resume, e um Job que falhou é retomado pelo disparo seguinte.
 - O LLM e o TTS disputam os 8 GB de VRAM. Ao fim do último estágio de LLM, o servidor descarrega o modelo explicitamente (`keep_alive: 0`) antes de pedir áudio, e o serviço de TTS carrega o Kokoro sob demanda e o libera quando fica ocioso. Sem isso, o TTS falha com `CUDA out of memory` enquanto o LLM continua carregado pelo `keep_alive` padrão.

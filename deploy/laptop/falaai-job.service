@@ -1,0 +1,12 @@
+# Unit systemd --user que dispara o Job no servidor. Acionada por falaai-job.timer.
+# Troque <tailnet> pelo nome da sua tailnet.
+[Unit]
+Description=Fala Ai - dispara o Job diario
+
+[Service]
+Type=oneshot
+Environment=FALAAI_URL=https://falaai.<tailnet>.ts.net
+# Depois de um boot ou resume, espera a Tailscale e o Ollama responderem (ate ~10 min).
+ExecStartPre=/usr/bin/curl -sS -o /dev/null --retry 20 --retry-delay 30 --retry-all-errors --fail http://100.74.37.102:11434/api/tags
+# 202 inicia ou retoma; 409 = ja tem Job rodando. Os dois sao ok.
+ExecStart=/usr/bin/curl -sS --retry 10 --retry-delay 30 --retry-all-errors -X POST ${FALAAI_URL}/jobs
