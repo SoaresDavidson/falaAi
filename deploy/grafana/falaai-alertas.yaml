@@ -1,19 +1,8 @@
 # Copie para .../prometheus/grafana/provisioning/alerting/ no servidor.
-# Os alertas usam a politica raiz ja existente (contact point `discord`); o contact point abaixo
-# (falaai-discord) fica disponivel para rotas especificas. Nao ha bloco `policies` aqui de proposito:
-# ele substituiria a politica raiz do servidor.
+# Os alertas usam a politica raiz ja existente (contact point `discord`, ja provisionado no servidor).
+# Datasource uid `prometheus` confirmado em provisioning/datasources/prometheus.yml.
 # Em provisionamento o Grafana expande ${VAR}; $labels/$values precisam de $$.
 apiVersion: 1
-
-contactPoints:
-  - orgId: 1
-    name: falaai-discord
-    receivers:
-      - uid: falaai-discord
-        type: discord
-        settings:
-          url: ${DISCORD_WEBHOOK_URL}
-          use_discord_username: false
 
 groups:
   - orgId: 1

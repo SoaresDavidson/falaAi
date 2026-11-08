@@ -1,6 +1,8 @@
 .git
 .venv
 data
+data/
+ts-state/
 .env
 **/__pycache__
 .superpowers

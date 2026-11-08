@@ -1,9 +1,8 @@
-# Cole este job em scrape_configs de
+# Cole este item sob o `scrape_configs:` existente de
 # /home/davi/my-servers-config/docker/server/prometheus/prometheus.yml e recarregue o Prometheus.
 # Alvo: o sidecar na rede medianet (o app compartilha a rede dele).
-scrape_configs:
-  - job_name: falaai
-    scrape_interval: 30s
-    metrics_path: /metrics
-    static_configs:
-      - targets: ["falaai_tailscale:8000"]
+- job_name: falaai
+  scrape_interval: 30s
+  metrics_path: /metrics
+  static_configs:
+    - targets: ["falaai_tailscale:8000"]
