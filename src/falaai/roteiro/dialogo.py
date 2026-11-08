@@ -12,6 +12,7 @@ SCHEMA = {
     "properties": {
         "falas": {
             "type": "array",
+            "minItems": 1,
             "items": {
                 "type": "object",
                 "properties": {
@@ -24,6 +25,9 @@ SCHEMA = {
     },
     "required": ["falas"],
 }
+
+# O modelo às vezes devolve "falas": [] mesmo com minItems no schema.
+TENTATIVAS = 3
 
 PALAVRAS_ABERTURA = 60
 PALAVRAS_FECHAMENTO = 50
@@ -65,6 +69,16 @@ def _falas(resposta: dict) -> tuple[Fala, ...]:
     return tuple(falas)
 
 
+def _pedir_falas(llm: Llm, sistema: str, usuario: str) -> tuple[Fala, ...]:
+    for tentativa in range(TENTATIVAS):
+        try:
+            return _falas(llm.json(sistema, usuario, SCHEMA))
+        except ValueError:
+            if tentativa == TENTATIVAS - 1:
+                raise
+    raise AssertionError("inalcançável")
+
+
 def _titulos(pauta: Pauta) -> str:
     return "\n".join(f"- {t.titulo}" for t in pauta.topicos)
 
@@ -72,18 +86,18 @@ def _titulos(pauta: Pauta) -> str:
 def escrever_abertura(llm: Llm, pauta: Pauta, data: date) -> tuple[Fala, ...]:
     data_ptbr = f"{_DIAS[data.weekday()]}, {data.day} de {_MESES[data.month - 1]} de {data.year}"
     sistema = prompts.ABERTURA.format(data=data_ptbr, palavras_alvo=PALAVRAS_ABERTURA)
-    return _falas(llm.json(sistema, f"Assuntos do dia:\n{_titulos(pauta)}", SCHEMA))
+    return _pedir_falas(llm, sistema, f"Assuntos do dia:\n{_titulos(pauta)}")
 
 
 def escrever_bloco(llm: Llm, topico: Topico) -> tuple[Fala, ...]:
     sistema = prompts.BLOCO.format(titulo=topico.titulo, palavras_alvo=topico.palavras_alvo)
     usuario = "\n\n".join(f"Fonte: {i.fonte}\n{i.titulo}\n{i.descricao}" for i in topico.itens)
-    return _falas(llm.json(sistema, usuario, SCHEMA))
+    return _pedir_falas(llm, sistema, usuario)
 
 
 def escrever_fechamento(llm: Llm, pauta: Pauta) -> tuple[Fala, ...]:
     sistema = prompts.FECHAMENTO.format(palavras_alvo=PALAVRAS_FECHAMENTO)
-    return _falas(llm.json(sistema, f"Assuntos falados hoje:\n{_titulos(pauta)}", SCHEMA))
+    return _pedir_falas(llm, sistema, f"Assuntos falados hoje:\n{_titulos(pauta)}")
 
 
 def aplicar_teto(roteiro: Roteiro, pauta: Pauta, palavras_max: int) -> tuple[Roteiro, Pauta]:

@@ -120,7 +120,8 @@ curl -s https://falaai.<tailnet>.ts.net/jobs/ultimo
 # Descarta a retomada e começa um Job novo.
 curl -X POST "https://falaai.<tailnet>.ts.net/jobs?novo=1"
 
-# Job novo só com as Newsletters recebidas num dia (fuso FALAAI_FUSO).
+# Só as Newsletters recebidas num dia (fuso FALAAI_FUSO). Retoma se o último Job com erro
+# for do mesmo dia; senão, cria um Job novo.
 curl -X POST "https://falaai.<tailnet>.ts.net/jobs?dia=2026-11-06"
 ```
 

@@ -150,3 +150,15 @@ def test_dia_ignora_retomada(store):
     assert not retomado
     assert job.id != antigo.id
     assert job.dia == date(2026, 11, 6)
+
+
+def test_dia_retoma_job_com_erro_do_mesmo_dia(store):
+    from datetime import date
+
+    antigo = store.criar_job("m", date(2026, 11, 6))
+    store.atualizar_job(antigo.id, status=JobStatus.ERRO, erro="x", terminar=True)
+    runner = JobRunner(store, lambda job: None, "m", registry=CollectorRegistry())
+    job, retomado = runner.iniciar(dia=date(2026, 11, 6))
+    runner.aguardar(5)
+    assert retomado
+    assert job.id == antigo.id
