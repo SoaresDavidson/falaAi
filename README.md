@@ -61,80 +61,50 @@ uv run falaai auth --client-secret ~/Downloads/client_secret.json --saida ~/gmai
 
 O comando abre o navegador. Autorize com a conta que recebe as newsletters.
 
-### 4. Servidor: código, dados e token
+### 4. Servidor: código e token
+
+O deploy fica no repositório de configuração do servidor, em
+`~/my-servers-config/docker/apps/falaai`: compose, sidecar Tailscale com HTTPS (`ts-serve.json`) e
+as variáveis `FALAAI_*`. `TS_AUTHKEY`, `TS_DOMAIN` e `CONFIG_HOST_PATH` vêm do `.env` compartilhado
+de lá. Este repositório só fornece o código, de onde a imagem é construída.
 
 ```bash
 # No servidor
-git clone https://github.com/SoaresDavidson/falaAi.git ~/falaAi
-cd ~/falaAi
-mkdir -p data
-sudo chown 1000:1000 data
+git clone git@github.com:SoaresDavidson/falaAi.git ~/falaAi
+mkdir -p /DATA/AppData/media-stack/falaai
 ```
 
 ```bash
 # No laptop: envia o token e apaga a cópia local
-scp ~/gmail-token.json jessejamesserver:falaAi/data/gmail-token.json
-ssh jessejamesserver 'chmod 600 ~/falaAi/data/gmail-token.json'
+scp ~/gmail-token.json jessejamesserver:/DATA/AppData/media-stack/falaai/gmail-token.json
+ssh jessejamesserver 'chmod 600 /DATA/AppData/media-stack/falaai/gmail-token.json'
 rm ~/gmail-token.json
 ```
 
-### 5. Servidor: configuração
-
-Gere uma auth key em https://login.tailscale.com/admin/settings/keys. Use uma key reutilizável
-ou com expiração longa, com a tag que você usa nos outros serviços.
+### 5. Servidor: subir o app
 
 ```bash
-# No servidor
-cd ~/falaAi
-TAILNET=$(tailscale status --json | grep -m1 -oP '"MagicDNSSuffix":\s*"\K[^.]+')   # ex.: tail1234
-cp .env.example .env
-sed -i "s|^TS_AUTHKEY=.*|TS_AUTHKEY=tskey-auth-COLE_AQUI|" .env
-sed -i "s|<tailnet>|$TAILNET|" .env
-chmod 600 .env
-grep -E "TS_AUTHKEY|FEED_BASE_URL" .env
-```
-
-### 6. Servidor: subir o app
-
-```bash
-cd ~/falaAi
+cd ~/my-servers-config/docker/apps/falaai
 docker compose up -d --build
 docker compose ps
 
 # Deve responder com as métricas falaai_*.
-docker exec falaai_tailscale wget -qO- http://localhost:8000/metrics | grep falaai_job_em_andamento
+docker exec falaai_tailscale wget -qO- http://127.0.0.1:8000/metrics | grep falaai_job_em_andamento
 ```
 
-### 7. Servidor: Prometheus e alertas no Discord
+Depois de um `git pull` aqui, rode de novo o `docker compose up -d --build` lá.
 
-```bash
-cd ~/falaAi
-CONF=/home/davi/my-servers-config/docker/server/prometheus
+O scrape do Prometheus (job `falaai`) e os alertas do Grafana (pasta "Fala Ai") também estão no
+`my-servers-config`. O alvo aparece em http://192.168.100.35:9091/targets e as regras em
+http://192.168.100.35:3001, em Alerting.
 
-# Insere o job de scrape logo abaixo de "scrape_configs:", com a indentação de 2 espaços dos outros jobs.
-cp $CONF/prometheus.yml $CONF/prometheus.yml.bak
-grep -v '^#' deploy/prometheus/scrape-falaai.yaml | sed 's/^/  /' > /tmp/scrape-falaai.yaml
-sed -i '/^scrape_configs:/r /tmp/scrape-falaai.yaml' $CONF/prometheus.yml
-docker run --rm -v $CONF/prometheus.yml:/p.yml --entrypoint promtool prom/prometheus check config /p.yml
-docker restart prometheus
-
-# Alertas (Job com erro, Job travado há mais de 2 h, app fora do ar).
-cp deploy/grafana/falaai-alertas.yaml $CONF/grafana/provisioning/alerting/
-docker restart grafana
-```
-
-Em http://192.168.100.35:9091/targets, o alvo `falaai` deve aparecer como `UP`. As regras ficam
-no Grafana (http://192.168.100.35:3001), em Alerting, na pasta "Fala Ai".
-
-### 8. Celular
+### 6. Celular
 
 Com a Tailscale ligada, assine no app de podcast:
 
 ```text
 https://falaai.<tailnet>.ts.net/feed.xml
 ```
-
-O endereço exato está em `grep FEED_BASE_URL ~/falaAi/.env`, no servidor.
 
 ## Uso
 

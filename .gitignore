@@ -9,4 +9,3 @@ __pycache__/
 gmail-token.json
 client_secret*.json
 .superpowers/
-/ts-state/
