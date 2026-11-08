@@ -9,6 +9,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
+import httpx
+
 from falaai.audio import montar_audio
 from falaai.config import Config
 from falaai.domain import Episodio, Estagio, Item, Job, JobStatus, Pauta, Roteiro
@@ -92,7 +94,8 @@ def executar_job(job: Job, deps: Dependencias) -> None:
         deps.llm.descarregar()
 
         estagio(Estagio.AUDIO)
-        arquivo = nome_arquivo(deps.hoje(), job.id)
+        hoje = deps.hoje()
+        arquivo = nome_arquivo(hoje, job.id)
         destino = deps.config.episodios_dir / arquivo
         wavs = [deps.tts.sintetizar(fala) for fala in roteiro.falas()]
         duracao = montar_audio(wavs, deps.config.pausa_ms, destino)
@@ -101,8 +104,8 @@ def executar_job(job: Job, deps: Dependencias) -> None:
         episodio = store.salvar_episodio(
             Episodio(
                 job_id=job.id,
-                titulo=titulo_episodio(deps.hoje()),
-                data=deps.hoje(),
+                titulo=titulo_episodio(hoje),
+                data=hoje,
                 arquivo=arquivo,
                 duracao_s=duracao,
                 tamanho_bytes=destino.stat().st_size,
@@ -110,10 +113,12 @@ def executar_job(job: Job, deps: Dependencias) -> None:
                 publicado_em=deps.agora(),
             )
         )
-        escrever_atomico(
-            deps.config.feed_path,
-            render_feed(store.episodios(), deps.config.feed_base_url),
-        )
+
+    # Reescrito também ao retomar: só arquiva depois de o Episódio estar no feed (ADR-0002).
+    escrever_atomico(
+        deps.config.feed_path,
+        render_feed(store.episodios(), deps.config.feed_base_url),
+    )
 
     estagio(Estagio.ARQUIVAMENTO)
     deps.fonte.arquivar([n.gmail_id for n in store.newsletters_do_job(job.id)])
@@ -134,6 +139,9 @@ def _extrair(job: Job, deps: Dependencias) -> list[Item]:
         if extraidos is None:
             try:
                 extraidos = extrair_itens(deps.llm, newsletter)
+            except (httpx.NetworkError, httpx.ConnectTimeout):
+                # Laptop fora do ar não é culpa da Newsletter: o Job falha e é retomado.
+                raise
             except Exception:
                 log.warning(
                     "extração falhou; newsletter %s fica pendente",

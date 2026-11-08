@@ -124,6 +124,8 @@ def test_extracao_falha_pula_newsletter(ambiente):
 
     assert store.job(job.id).status == JobStatus.SUCESSO
     assert fonte.arquivados == ["n2"]
+    assert [n.gmail_id for n in store.newsletters_do_job(job.id)] == ["n2"]
+    assert "n1" not in {i.newsletter_id for i in store.episodio_do_job(job.id).shownotes}
 
 
 def test_retoma_sem_refazer(ambiente):
@@ -224,3 +226,48 @@ def test_teto_corta_topico_e_vai_para_shownotes(ambiente):
     ep = store.episodio_do_job(job.id)
     assert len(store.pauta(job.id).topicos) == 1
     assert {i.newsletter_id for i in ep.shownotes} == {"n1", "n2"}
+
+
+def test_laptop_fora_na_extracao_falha_o_job_e_retoma(ambiente):
+    _, store, fonte, deps = ambiente
+    primeiro = FakeLlm([httpx.ConnectError("laptop desligado")])
+    job = store.criar_job(primeiro.modelo)
+    falhar_como_runner(store, job, httpx.ConnectError, lambda: executar_job(job, deps(primeiro)))
+    assert [n.gmail_id for n in store.newsletters_do_job(job.id)] == ["n1", "n2"]
+
+    store.atualizar_job(job.id, status=JobStatus.RODANDO)
+    executar_job(store.job(job.id), deps(FakeLlm(respostas_felizes(["n1", "n2"], 2))))
+    assert store.job(job.id).status == JobStatus.SUCESSO
+    assert fonte.arquivados == ["n1", "n2"]
+
+
+def test_feed_reescrito_ao_retomar_antes_de_arquivar(ambiente, monkeypatch):
+    config, store, fonte, deps = ambiente
+    import falaai.job as modulo
+
+    original = modulo.escrever_atomico
+    chamadas = []
+
+    def falha_uma_vez(path, conteudo):
+        chamadas.append(path)
+        if len(chamadas) == 1:
+            raise OSError("disco cheio")
+        original(path, conteudo)
+
+    monkeypatch.setattr(modulo, "escrever_atomico", falha_uma_vez)
+    llm = FakeLlm(respostas_felizes(["n1", "n2"], 2))
+    job = store.criar_job(llm.modelo)
+    falhar_como_runner(store, job, OSError, lambda: executar_job(job, deps(llm)))
+    assert fonte.arquivados == []
+
+    class FonteQueConfereFeed(FakeFonte):
+        def arquivar(self, gmail_ids):
+            ep = store.episodio_do_job(job.id)
+            assert ep.arquivo in config.feed_path.read_text()
+            super().arquivar(gmail_ids)
+
+    d = deps(FakeLlm([]))
+    d.fonte = FonteQueConfereFeed(fonte.newsletters)
+    store.atualizar_job(job.id, status=JobStatus.RODANDO)
+    executar_job(store.job(job.id), d)
+    assert d.fonte.arquivados == ["n1", "n2"]
