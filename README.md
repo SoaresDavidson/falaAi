@@ -131,7 +131,7 @@ no Grafana (http://192.168.100.35:3001), em Alerting, na pasta "Fala Ai".
 Com a Tailscale ligada, assine no app de podcast:
 
 ```text
-http://falaai.<tailnet>.ts.net:8000/feed.xml
+https://falaai.<tailnet>.ts.net/feed.xml
 ```
 
 O endereço exato está em `grep FEED_BASE_URL ~/falaAi/.env`, no servidor.
@@ -142,13 +142,13 @@ Com o laptop ligado (Ollama e `falaai-tts` no ar):
 
 ```bash
 # Gera o Episódio de hoje, ou retoma o último Job que falhou.
-curl -X POST http://falaai:8000/jobs
+curl -X POST https://falaai.<tailnet>.ts.net/jobs
 
 # Acompanha o Job.
-curl -s http://falaai:8000/jobs/ultimo
+curl -s https://falaai.<tailnet>.ts.net/jobs/ultimo
 
 # Descarta a retomada e começa um Job novo.
-curl -X POST "http://falaai:8000/jobs?novo=1"
+curl -X POST "https://falaai.<tailnet>.ts.net/jobs?novo=1"
 ```
 
 Os logs estão no Dozzle ou em `docker logs -f falaai`.

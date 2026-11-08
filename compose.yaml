@@ -18,9 +18,12 @@ services:
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_STATE_DIR=/var/lib/tailscale
+      # HTTPS na 443 da tailnet, como os outros serviços; o app continua em :8000 (Prometheus usa).
+      - TS_SERVE_CONFIG=/config/ts-serve.json
       - TS_USERSPACE=false
     volumes:
       - ./ts-state:/var/lib/tailscale
+      - ./deploy/ts-serve.json:/config/ts-serve.json:ro
       - /dev/net/tun:/dev/net/tun
     cap_add:
       - NET_ADMIN
