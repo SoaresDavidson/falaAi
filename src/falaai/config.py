@@ -1,0 +1,44 @@
+import dataclasses
+import os
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class Config:
+    data_dir: Path = Path("/data")
+    ollama_url: str = "http://100.74.37.102:11434"
+    ollama_modelo: str = "qwen3:30b-a3b-instruct-2507"
+    tts_url: str = "http://100.74.37.102:8880"
+    gmail_rotulo: str = "newsletter"
+    gmail_token: Path = Path("/data/gmail-token.json")
+    max_minutos: int = 15
+    palavras_por_minuto: int = 150
+    pausa_ms: int = 300
+    texto_max_chars: int = 30000
+    feed_base_url: str = "http://falaai"
+
+    @classmethod
+    def do_ambiente(cls) -> "Config":
+        valores = {}
+        for campo in dataclasses.fields(cls):
+            bruto = os.environ.get(f"FALAAI_{campo.name.upper()}")
+            if bruto is not None:
+                valores[campo.name] = type(campo.default)(bruto)
+        return cls(**valores)
+
+    @property
+    def palavras_max(self) -> int:
+        return self.max_minutos * self.palavras_por_minuto
+
+    @property
+    def db_path(self) -> Path:
+        return self.data_dir / "falaai.db"
+
+    @property
+    def episodios_dir(self) -> Path:
+        return self.data_dir / "episodes"
+
+    @property
+    def feed_path(self) -> Path:
+        return self.data_dir / "feed.xml"
