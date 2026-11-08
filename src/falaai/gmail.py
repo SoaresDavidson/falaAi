@@ -78,9 +78,7 @@ def _termo_rotulo(nome: str) -> str:
     return re.sub(r"[\s/]+", "-", nome)
 
 
-def consulta(
-    rotulo: str, processada: str, dia: date | None, janela_dias: int, fuso: tzinfo
-) -> str:
+def consulta(rotulo: str, processada: str, dia: date | None, janela_dias: int, fuso: tzinfo) -> str:
     """Busca do Gmail: as pendentes de um dia no fuso dado, ou as dos últimos N dias.
 
     Pendente é ter o rótulo das Newsletters e não ter o de processada (ADR-0004), esteja ou não na
@@ -159,9 +157,7 @@ class GmailFonte:
                 raw = base64.urlsafe_b64decode(r["raw"] + "=" * (-len(r["raw"]) % 4))
                 out.append(newsletter_de_mime(i, raw, self.max_chars))
             except Exception:
-                log.exception(
-                    "Falha ao processar a mensagem %s; ela continua pendente", i
-                )
+                log.exception("Falha ao processar a mensagem %s; ela continua pendente", i)
         if ids and not out:
             raise RuntimeError(f"todas as {len(ids)} mensagens falharam ao ser lidas")
         return sorted(out, key=lambda n: n.recebida_em)

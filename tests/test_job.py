@@ -301,3 +301,31 @@ def test_coleta_passa_dia_para_fonte(ambiente):
     job = store.criar_job("m", date(2026, 11, 6))
     executar_job(job, deps(FakeLlm(respostas_felizes(["n1", "n2"], 1))))
     assert fonte.dias == [date(2026, 11, 6)]
+
+
+def test_data_do_episodio_e_o_dia_do_job(ambiente):
+    _, store, _, deps = ambiente
+    job = store.criar_job("m", date(2026, 11, 6))
+    llm = FakeLlm(respostas_felizes(["n1", "n2"], 1))
+    executar_job(job, deps(llm))
+    (ep,) = store.episodios()
+    assert ep.data == date(2026, 11, 6)
+    assert ep.titulo == "Fala Aí — 6 de novembro de 2026"
+    abertura_sistema = llm.chamadas[3][0]
+    assert "sexta-feira, 6 de novembro de 2026" in abertura_sistema
+
+
+def test_extracao_resolve_links(ambiente):
+    _, store, _, deps = ambiente
+    respostas = respostas_felizes(["n1", "n2"], 1)
+    respostas[0] = {
+        "itens": [
+            {"titulo": "com link", "descricao": "d", "link": "https://rastreio.com/x"},
+            {"titulo": "sem link", "descricao": "d", "link": None},
+        ]
+    }
+    d = deps(FakeLlm(respostas))
+    d.resolver_link = lambda url: url.replace("rastreio.com/x", "destino.com/artigo")
+    executar_job(store.criar_job("m"), d)
+    links = [i.link for i in store.itens_extraidos("n1")]
+    assert links == ["https://destino.com/artigo", None]
