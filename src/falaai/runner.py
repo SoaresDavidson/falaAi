@@ -56,11 +56,16 @@ class JobRunner:
             self._jobs.labels(status=JobStatus.ERRO.value).inc(n)
 
     def iniciar(self, novo: bool = False, dia: date | None = None) -> tuple[Job, bool]:
-        """Com `dia`, sempre cria um Job novo, restrito às Newsletters daquele dia."""
+        """Retoma o último Job com erro; com `dia`, só se ele for do mesmo dia.
+
+        Fora isso (ou com `novo`), cria um Job novo, restrito ao `dia` se houver.
+        """
         with self._lock:
             if self._thread is not None and self._thread.is_alive():
                 raise JobEmAndamento()
-            job = None if novo or dia else self.store.job_retomavel()
+            job = None if novo else self.store.job_retomavel()
+            if job is not None and dia is not None and job.dia != dia:
+                job = None
             retomado = job is not None
             if job is None:
                 job = self.store.criar_job(self._modelo, dia)
