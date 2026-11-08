@@ -115,3 +115,31 @@ def test_interrompidos_define_terminado_em(tmp_path):
     j = s.criar_job("m")
     s.marcar_interrompidos()
     assert s.job(j.id).terminado_em is not None
+
+
+def test_job_guarda_dia(tmp_path):
+    s = Store(tmp_path / "t.db")
+    assert s.criar_job("m").dia is None
+    j = s.criar_job("m", date(2026, 11, 6))
+    assert s.job(j.id).dia == date(2026, 11, 6)
+
+
+def test_migra_banco_sem_coluna_dia(tmp_path):
+    import sqlite3
+
+    p = tmp_path / "t.db"
+    db = sqlite3.connect(p)
+    db.execute(
+        "CREATE TABLE jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, status TEXT NOT NULL,"
+        " estagio TEXT NOT NULL, iniciado_em TEXT NOT NULL, terminado_em TEXT,"
+        " modelo TEXT NOT NULL, erro TEXT)"
+    )
+    db.execute(
+        "INSERT INTO jobs (status, estagio, iniciado_em, modelo)"
+        " VALUES ('erro', 'coleta', '2026-11-07T10:00:00+00:00', 'm')"
+    )
+    db.commit()
+    db.close()
+    s = Store(p)
+    assert s.job(1).dia is None
+    assert s.criar_job("m", date(2026, 11, 6)).dia == date(2026, 11, 6)

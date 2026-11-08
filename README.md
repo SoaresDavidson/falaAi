@@ -119,7 +119,15 @@ curl -s https://falaai.<tailnet>.ts.net/jobs/ultimo
 
 # Descarta a retomada e começa um Job novo.
 curl -X POST "https://falaai.<tailnet>.ts.net/jobs?novo=1"
+
+# Job novo só com as Newsletters recebidas num dia (fuso FALAAI_FUSO).
+curl -X POST "https://falaai.<tailnet>.ts.net/jobs?dia=2026-11-06"
 ```
+
+Sem `?dia=`, o Job só pega Newsletters dos últimos `FALAAI_GMAIL_JANELA_DIAS` dias (padrão 2; as
+variáveis ficam no compose do `my-servers-config`).
+As mais antigas continuam pendentes no Gmail e não são arquivadas; use `?dia=` para gerar um
+Episódio de um dia específico, ou `FALAAI_GMAIL_JANELA_DIAS=0` para pegar todas.
 
 Os logs estão no Dozzle ou em `docker logs -f falaai`.
 

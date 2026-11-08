@@ -3,7 +3,7 @@
 import io
 import wave
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from falaai.domain import Fala, Item, Newsletter
 
@@ -12,8 +12,10 @@ class FakeFonte:
     def __init__(self, newsletters: list[Newsletter]):
         self.newsletters = list(newsletters)
         self.arquivados: list[str] = []
+        self.dias: list[date | None] = []
 
-    def pendentes(self) -> list[Newsletter]:
+    def pendentes(self, dia: date | None = None) -> list[Newsletter]:
+        self.dias.append(dia)
         return list(self.newsletters)
 
     def arquivar(self, gmail_ids: Sequence[str]) -> None:

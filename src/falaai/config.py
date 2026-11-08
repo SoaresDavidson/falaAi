@@ -17,6 +17,9 @@ class Config:
     pausa_ms: int = 300
     texto_max_chars: int = 30000
     feed_base_url: str = "http://falaai"
+    # Sem `?dia=`, o Job só coleta Newsletters dos últimos N dias (0 = todas as pendentes).
+    gmail_janela_dias: int = 2
+    fuso: str = "America/Sao_Paulo"
 
     @classmethod
     def do_ambiente(cls) -> "Config":

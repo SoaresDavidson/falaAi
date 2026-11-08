@@ -47,5 +47,5 @@ _Avoid_: Feed, canal, show
 ### Execução
 
 **Job**:
-Uma execução completa, disparada manualmente, que transforma as Newsletters pendentes em um Episódio publicado. Termina em sucesso, erro ou sem Episódio (nenhuma Newsletter pendente). Um Job interrompido retoma do último estágio concluído.
+Uma execução completa, disparada manualmente, que transforma as Newsletters pendentes recentes, ou as de um dia escolhido, em um Episódio publicado. Termina em sucesso, erro ou sem Episódio (nenhuma Newsletter pendente). Um Job interrompido retoma do último estágio concluído.
 _Avoid_: Run, execução, pipeline, tarefa
