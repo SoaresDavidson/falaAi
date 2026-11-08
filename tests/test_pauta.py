@@ -36,3 +36,40 @@ def test_corta_topicos_acima_do_orcamento():
     pauta = montar_pauta(llm, itens, 1000)
     assert [t.titulo for t in pauta.topicos] == ["X", "Y"]
     assert pauta.fora_do_audio == (itens[2],)
+
+
+def test_palavras_alvo_invalido_descarta_topico():
+    itens = [item("a"), item("b"), item("c"), item("d")]
+    llm = FakeLlm(
+        [
+            {
+                "topicos": [
+                    {"titulo": "X", "indices": [0], "palavras_alvo": -100},
+                    {"titulo": "Y", "indices": [1], "palavras_alvo": 0},
+                    {"titulo": "W", "indices": [3], "palavras_alvo": "muitas"},
+                    {"titulo": "Z", "indices": [2], "palavras_alvo": 100},
+                ]
+            }
+        ]
+    )
+    pauta = montar_pauta(llm, itens, 2250)
+    assert [t.titulo for t in pauta.topicos] == ["Z"]
+    assert pauta.fora_do_audio == (itens[0], itens[1], itens[3])
+
+
+def test_bool_e_nulos_tratados():
+    itens = [item("a")]
+    llm = FakeLlm(
+        [
+            {
+                "topicos": [
+                    {"titulo": "X", "indices": [True], "palavras_alvo": 100},
+                    {"titulo": "Y", "indices": None, "palavras_alvo": 100},
+                ]
+            }
+        ]
+    )
+    pauta = montar_pauta(llm, itens, 2250)
+    assert pauta.topicos == ()
+    assert pauta.fora_do_audio == (itens[0],)
+    assert montar_pauta(FakeLlm([{"topicos": None}]), itens, 2250).topicos == ()

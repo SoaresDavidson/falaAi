@@ -1,7 +1,14 @@
 from datetime import date
 
+import pytest
+
 from falaai.domain import Fala, Pauta, Roteiro, Topico
-from falaai.roteiro.dialogo import aplicar_teto, escrever_abertura, escrever_bloco
+from falaai.roteiro.dialogo import (
+    aplicar_teto,
+    escrever_abertura,
+    escrever_bloco,
+    escrever_fechamento,
+)
 from tests.fakes import FakeLlm, item
 
 
@@ -41,3 +48,27 @@ def test_aplicar_teto_remove_blocos_finais():
     assert len(novo.blocos) == 2
     assert len(nova_pauta.topicos) == 2
     assert nova_pauta.fora_do_audio == (itens[2],)
+
+
+def test_bloco_sem_falas_validas_levanta():
+    t = Topico("T", (item("a"),), 100)
+    for resposta in (
+        {"falas": []},
+        {"falas": None},
+        {"falas": [{"apresentador": "bob", "texto": "x"}]},
+    ):
+        with pytest.raises(ValueError):
+            escrever_bloco(FakeLlm([resposta]), t)
+
+
+def test_fechamento_sem_falas_levanta_e_com_falas_retorna():
+    pauta = Pauta((Topico("T", (item("a"),), 100),), ())
+    with pytest.raises(ValueError):
+        escrever_fechamento(FakeLlm([{"falas": []}]), pauta)
+    ok = FakeLlm([{"falas": [{"apresentador": "alex", "texto": "Tchau"}]}])
+    assert escrever_fechamento(ok, pauta) == (Fala("alex", "Tchau"),)
+
+
+def test_abertura_sem_falas_levanta():
+    with pytest.raises(ValueError):
+        escrever_abertura(FakeLlm([{"falas": []}]), Pauta((), ()), date(2026, 11, 8))

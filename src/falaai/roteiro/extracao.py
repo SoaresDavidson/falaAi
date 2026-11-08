@@ -30,7 +30,7 @@ def extrair_itens(llm: Llm, newsletter: Newsletter) -> list[Item]:
     )
     resposta = llm.json(prompts.EXTRACAO, usuario, SCHEMA)
     itens = []
-    for bruto in resposta.get("itens", []):
+    for bruto in resposta.get("itens") or []:
         titulo = (bruto.get("titulo") or "").strip()
         if not titulo:
             continue

@@ -36,10 +36,18 @@ def montar_pauta(llm: Llm, itens: Sequence[Item], palavras_max: int) -> Pauta:
 
     usados: set[int] = set()
     topicos: list[Topico] = []
-    for bruto in resposta.get("topicos", []):
+    for bruto in resposta.get("topicos") or []:
+        palavras = bruto.get("palavras_alvo")
+        if isinstance(palavras, bool) or not isinstance(palavras, int) or palavras <= 0:
+            continue
         validos = []
-        for i in bruto.get("indices", []):
-            if isinstance(i, int) and 0 <= i < len(itens) and i not in usados:
+        for i in bruto.get("indices") or []:
+            if (
+                isinstance(i, int)
+                and not isinstance(i, bool)
+                and 0 <= i < len(itens)
+                and i not in usados
+            ):
                 usados.add(i)
                 validos.append(i)
         if not validos:
@@ -48,7 +56,7 @@ def montar_pauta(llm: Llm, itens: Sequence[Item], palavras_max: int) -> Pauta:
             Topico(
                 titulo=(bruto.get("titulo") or "").strip() or itens[validos[0]].titulo,
                 itens=tuple(itens[i] for i in validos),
-                palavras_alvo=int(bruto.get("palavras_alvo") or 0),
+                palavras_alvo=palavras,
             )
         )
 

@@ -55,11 +55,13 @@ _DIAS = [
 
 def _falas(resposta: dict) -> tuple[Fala, ...]:
     falas = []
-    for bruta in resposta.get("falas", []):
+    for bruta in resposta.get("falas") or []:
         apresentador = bruta.get("apresentador")
         texto = (bruta.get("texto") or "").strip()
         if apresentador in ("dora", "alex") and texto:
             falas.append(Fala(apresentador, texto))
+    if not falas:
+        raise ValueError("o LLM não devolveu nenhuma fala válida")
     return tuple(falas)
 
 
@@ -85,6 +87,7 @@ def escrever_fechamento(llm: Llm, pauta: Pauta) -> tuple[Fala, ...]:
 
 
 def aplicar_teto(roteiro: Roteiro, pauta: Pauta, palavras_max: int) -> tuple[Roteiro, Pauta]:
+    assert len(roteiro.blocos) == len(pauta.topicos)
     blocos = list(roteiro.blocos)
     topicos = list(pauta.topicos)
     fora = list(pauta.fora_do_audio)

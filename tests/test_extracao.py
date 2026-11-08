@@ -19,3 +19,7 @@ def test_extrai_e_descarta_sem_titulo():
     assert [i.titulo for i in itens] == ["A", "C"]
     assert all(i.fonte == n.remetente and i.newsletter_id == n.gmail_id for i in itens)
     assert itens[1].link is None
+
+
+def test_itens_nulo_vira_vazio():
+    assert extrair_itens(FakeLlm([{"itens": None}]), newsletter()) == []
