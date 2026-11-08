@@ -444,6 +444,7 @@ dependencies = [
     { name = "markdownify" },
     { name = "prometheus-client" },
     { name = "starlette" },
+    { name = "tzdata" },
     { name = "uvicorn" },
 ]
 
@@ -475,6 +476,7 @@ requires-dist = [
     { name = "prometheus-client" },
     { name = "soundfile", marker = "extra == 'tts'" },
     { name = "starlette" },
+    { name = "tzdata" },
     { name = "uvicorn" },
 ]
 provides-extras = ["tts"]

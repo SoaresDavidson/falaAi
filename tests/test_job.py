@@ -294,3 +294,10 @@ def test_http_status_servidor_quebrado_propaga(ambiente, codigo):
     with pytest.raises(httpx.HTTPStatusError):
         executar_job(job, deps(llm))
     assert [n.gmail_id for n in store.newsletters_do_job(job.id)] == ["n1", "n2"]
+
+
+def test_coleta_passa_dia_para_fonte(ambiente):
+    _, store, fonte, deps = ambiente
+    job = store.criar_job("m", date(2026, 11, 6))
+    executar_job(job, deps(FakeLlm(respostas_felizes(["n1", "n2"], 1))))
+    assert fonte.dias == [date(2026, 11, 6)]

@@ -3,6 +3,7 @@
 import dataclasses
 import functools
 import re
+from datetime import date
 
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, generate_latest
 from starlette.applications import Starlette
@@ -40,8 +41,13 @@ def criar_app(
     runner.registrar_interrompidos(store.marcar_interrompidos())
 
     async def post_jobs(request: Request) -> Response:
+        bruto = request.query_params.get("dia")
         try:
-            job, retomado = runner.iniciar(novo=request.query_params.get("novo") == "1")
+            dia = date.fromisoformat(bruto) if bruto else None
+        except ValueError:
+            return JSONResponse({"erro": "dia inválido; use AAAA-MM-DD"}, status_code=400)
+        try:
+            job, retomado = runner.iniciar(novo=request.query_params.get("novo") == "1", dia=dia)
         except JobEmAndamento:
             return JSONResponse({"erro": "job em andamento"}, status_code=409)
         return JSONResponse({"job_id": job.id, "retomado": retomado}, status_code=202)

@@ -137,3 +137,16 @@ def test_registrar_interrompidos_conta_erro(store):
     runner = JobRunner(store, lambda job: None, "m", registry=reg)
     runner.registrar_interrompidos(2)
     assert reg.get_sample_value("falaai_jobs_total", {"status": "erro"}) == 2
+
+
+def test_dia_ignora_retomada(store):
+    from datetime import date
+
+    antigo = store.criar_job("m")
+    store.atualizar_job(antigo.id, status=JobStatus.ERRO, erro="x", terminar=True)
+    runner = JobRunner(store, lambda job: None, "m", registry=CollectorRegistry())
+    job, retomado = runner.iniciar(dia=date(2026, 11, 6))
+    runner.aguardar(5)
+    assert not retomado
+    assert job.id != antigo.id
+    assert job.dia == date(2026, 11, 6)

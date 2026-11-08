@@ -7,7 +7,7 @@ import logging
 import os
 import re
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
@@ -73,11 +73,34 @@ def newsletter_de_mime(gmail_id: str, raw: bytes, max_chars: int) -> Newsletter:
     )
 
 
+def consulta(rotulo: str, dia: date | None, janela_dias: int, fuso: tzinfo) -> str:
+    """Busca do Gmail: as pendentes de um dia no fuso dado, ou as dos últimos N dias."""
+    q = f"label:{rotulo} in:inbox"
+    if dia is not None:
+        # Epoch em segundos: `after:AAAA/MM/DD` usaria o fuso do Pacífico.
+        inicio = datetime.combine(dia, time(), fuso)
+        fim = datetime.combine(dia + timedelta(days=1), time(), fuso)
+        return f"{q} after:{int(inicio.timestamp())} before:{int(fim.timestamp())}"
+    if janela_dias > 0:
+        return f"{q} newer_than:{janela_dias}d"
+    return q
+
+
 class GmailFonte:
-    def __init__(self, token_path: Path, rotulo: str, max_chars: int, servico=None):
+    def __init__(
+        self,
+        token_path: Path,
+        rotulo: str,
+        max_chars: int,
+        servico=None,
+        janela_dias: int = 0,
+        fuso: tzinfo = UTC,
+    ):
         self.token_path = token_path
         self.rotulo = rotulo
         self.max_chars = max_chars
+        self.janela_dias = janela_dias
+        self.fuso = fuso
         self._servico = servico
 
     def _credenciais(self):
@@ -102,12 +125,13 @@ class GmailFonte:
             self._servico = build("gmail", "v1", credentials=creds, cache_discovery=False)
         return self._servico
 
-    def pendentes(self) -> list[Newsletter]:
+    def pendentes(self, dia: date | None = None) -> list[Newsletter]:
+        q = consulta(self.rotulo, dia, self.janela_dias, self.fuso)
         msgs = self._svc().users().messages()
         ids: list[str] = []
         token = None
         while True:
-            kw = {"userId": "me", "q": f"label:{self.rotulo} in:inbox"}
+            kw = {"userId": "me", "q": q}
             if token:
                 kw["pageToken"] = token
             resp = msgs.list(**kw).execute()

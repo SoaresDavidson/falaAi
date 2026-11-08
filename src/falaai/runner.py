@@ -4,6 +4,7 @@ import logging
 import threading
 import time
 from collections.abc import Callable
+from datetime import date
 
 from prometheus_client import CollectorRegistry, Counter, Gauge
 
@@ -54,14 +55,15 @@ class JobRunner:
         if n:
             self._jobs.labels(status=JobStatus.ERRO.value).inc(n)
 
-    def iniciar(self, novo: bool = False) -> tuple[Job, bool]:
+    def iniciar(self, novo: bool = False, dia: date | None = None) -> tuple[Job, bool]:
+        """Com `dia`, sempre cria um Job novo, restrito às Newsletters daquele dia."""
         with self._lock:
             if self._thread is not None and self._thread.is_alive():
                 raise JobEmAndamento()
-            job = None if novo else self.store.job_retomavel()
+            job = None if novo or dia else self.store.job_retomavel()
             retomado = job is not None
             if job is None:
-                job = self.store.criar_job(self._modelo)
+                job = self.store.criar_job(self._modelo, dia)
             else:
                 self.store.atualizar_job(job.id, status=JobStatus.RODANDO)
                 job = self.store.job(job.id)

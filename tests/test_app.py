@@ -123,3 +123,13 @@ def test_post_jobs_novo(config, store):
     assert r.status_code == 202
     assert r.json()["retomado"] is False
     assert r.json()["job_id"] != antigo.id
+
+
+def test_post_jobs_com_dia(config, store):
+    client, runner = _app(config, store)
+    assert client.post("/jobs?dia=06/11").status_code == 400
+    r = client.post("/jobs?dia=2026-11-06")
+    assert r.status_code == 202
+    runner.aguardar(5)
+    assert store.job(r.json()["job_id"]).dia.isoformat() == "2026-11-06"
+    assert client.get("/jobs/ultimo").json()["dia"] == "2026-11-06"
