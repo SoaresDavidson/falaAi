@@ -106,7 +106,10 @@ def test_pendentes_pagina_e_ordena(tmp_path):
 
 
 def test_arquivar_aplica_rotulo_existente(tmp_path):
-    rotulos = [{"id": "Label_1", "name": "newsletter"}, {"id": "Label_2", "name": "falaai-processada"}]
+    rotulos = [
+        {"id": "Label_1", "name": "newsletter"},
+        {"id": "Label_2", "name": "falaai-processada"},
+    ]
     svc = FakeServico({}, {}, rotulos)
     fonte = GmailFonte(tmp_path / "t.json", "newsletter", 1000, servico=svc)
     fonte.arquivar([])

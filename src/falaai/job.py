@@ -4,9 +4,11 @@ Cada estágio grava seu resultado no Store antes do próximo começar, então um
 interrompido (laptop dormindo, rede caindo) retoma do ponto onde parou. Ver ADR-0002.
 """
 
+import functools
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
@@ -16,6 +18,7 @@ from falaai.audio import montar_audio
 from falaai.config import Config
 from falaai.domain import Episodio, Estagio, Item, Job, JobStatus, Pauta, Roteiro
 from falaai.feed import escrever_atomico, nome_arquivo, render_feed, titulo_episodio
+from falaai.links import novo_cliente, resolver_link
 from falaai.ports import FonteNewsletters, Llm, Tts
 from falaai.roteiro.dialogo import (
     aplicar_teto,
@@ -43,6 +46,7 @@ class Dependencias:
     config: Config
     hoje: Callable[[], date] = date.today
     agora: Callable[[], datetime] = field(default=_agora)
+    resolver_link: Callable[[str], str] = field(default=lambda url: url)
 
 
 def montar_dependencias(config: Config) -> Dependencias:
@@ -66,6 +70,7 @@ def montar_dependencias(config: Config) -> Dependencias:
         tts=KokoroTts(config.tts_url),
         config=config,
         hoje=lambda: datetime.now(fuso).date(),
+        resolver_link=functools.partial(resolver_link, cliente=novo_cliente()),
     )
 
 
@@ -104,7 +109,7 @@ def executar_job(job: Job, deps: Dependencias) -> None:
         deps.llm.descarregar()
 
         estagio(Estagio.AUDIO)
-        hoje = deps.hoje()
+        hoje = _data_episodio(job, deps)
         arquivo = nome_arquivo(hoje, job.id)
         destino = deps.config.episodios_dir / arquivo
         wavs = [deps.tts.sintetizar(fala) for fala in roteiro.falas()]
@@ -171,6 +176,7 @@ def _extrair(job: Job, deps: Dependencias) -> list[Item]:
                 falhas.append(newsletter.gmail_id)
                 log.warning("extração falhou; newsletter %s", newsletter.gmail_id, exc_info=True)
                 continue
+            extraidos = _resolver_links(extraidos, deps.resolver_link)
             deps.store.salvar_itens(newsletter.gmail_id, extraidos)
         itens.extend(extraidos)
     if tentativas and len(falhas) == tentativas and not itens:
@@ -193,7 +199,9 @@ def _dialogar(job: Job, pauta: Pauta, deps: Dependencias) -> tuple[Roteiro, Paut
             store.salvar_falas(job.id, chave, falas)
         return falas
 
-    abertura = cacheado("abertura", lambda: escrever_abertura(llm, pauta, deps.hoje()))
+    abertura = cacheado(
+        "abertura", lambda: escrever_abertura(llm, pauta, _data_episodio(job, deps))
+    )
     blocos = tuple(
         cacheado(f"topico:{i}", lambda t=topico: escrever_bloco(llm, t))
         for i, topico in enumerate(pauta.topicos)
@@ -208,6 +216,17 @@ def _dialogar(job: Job, pauta: Pauta, deps: Dependencias) -> tuple[Roteiro, Paut
     if pauta_final != pauta:
         store.salvar_pauta(job.id, pauta_final)
     return roteiro, pauta_final
+
+
+def _data_episodio(job: Job, deps: Dependencias) -> date:
+    """Um Job de `?dia=` fala daquele dia, não de quando rodou."""
+    return job.dia or deps.hoje()
+
+
+def _resolver_links(itens: list[Item], resolver: Callable[[str], str]) -> list[Item]:
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        links = list(pool.map(lambda i: resolver(i.link) if i.link else None, itens))
+    return [replace(i, link=link) for i, link in zip(itens, links, strict=True)]
 
 
 def _shownotes(pauta: Pauta) -> tuple[Item, ...]:
