@@ -22,7 +22,7 @@ tts = ["kokoro>=0.9", "soundfile", "numpy"]
 falaai = "falaai.cli:main"
 
 [dependency-groups]
-dev = ["pytest", "respx", "ruff"]
+dev = ["pytest", "respx", "ruff", "httpx2"]
 
 [build-system]
 requires = ["hatchling"]

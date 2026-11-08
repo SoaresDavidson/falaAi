@@ -456,6 +456,7 @@ tts = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx2" },
     { name = "pytest" },
     { name = "respx" },
     { name = "ruff" },
@@ -480,6 +481,7 @@ provides-extras = ["tts"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx2" },
     { name = "pytest" },
     { name = "respx" },
     { name = "ruff" },
