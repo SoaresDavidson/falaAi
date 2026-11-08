@@ -39,3 +39,12 @@ def test_concatena_com_pausas(tmp_path):
 def test_vazio_levanta(tmp_path):
     with pytest.raises(ValueError):
         montar_audio([], 300, tmp_path / "ep.mp3")
+
+
+def test_wav_corrompido_levanta_e_limpa_tmp(tmp_path):
+    with pytest.raises(RuntimeError) as exc:
+        montar_audio([b"lixo"], 300, tmp_path / "ep.mp3")
+    assert str(exc.value).strip()
+    assert "falhou" in str(exc.value)
+    assert not list(tmp_path.glob("*.tmp.mp3"))
+    assert not (tmp_path / "ep.mp3").exists()

@@ -13,6 +13,24 @@ def montar_audio(wavs: Sequence[bytes], pausa_ms: int, destino: Path) -> float:
     if not wavs:
         raise ValueError("nenhum áudio para montar")
     tmp_mp3 = destino.with_suffix(".tmp.mp3")
+    try:
+        _codificar(wavs, pausa_ms, tmp_mp3)
+        os.replace(tmp_mp3, destino)
+    except BaseException:
+        tmp_mp3.unlink(missing_ok=True)
+        raise
+    return _duracao(destino)
+
+
+def _rodar(cmd: list[str]) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(cmd, check=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        stderr = (e.stderr or b"").decode(errors="replace").strip()
+        raise RuntimeError(f"{cmd[0]} falhou (código {e.returncode}): {stderr}") from e
+
+
+def _codificar(wavs: Sequence[bytes], pausa_ms: int, tmp_mp3: Path) -> None:
     with TemporaryDirectory() as pasta:
         entradas: list[str] = []
         for i, wav in enumerate(wavs):
@@ -30,7 +48,7 @@ def montar_audio(wavs: Sequence[bytes], pausa_ms: int, destino: Path) -> float:
                 )
                 rotulos.append(f"[p{i}]")
         partes.append(f"{''.join(rotulos)}concat=n={len(rotulos)}:v=0:a=1[out]")
-        subprocess.run(
+        _rodar(
             [
                 "ffmpeg",
                 "-y",
@@ -50,12 +68,12 @@ def montar_audio(wavs: Sequence[bytes], pausa_ms: int, destino: Path) -> float:
                 "-f",
                 "mp3",
                 str(tmp_mp3),
-            ],
-            check=True,
-            capture_output=True,
+            ]
         )
-    os.replace(tmp_mp3, destino)
-    saida = subprocess.run(
+
+
+def _duracao(destino: Path) -> float:
+    saida = _rodar(
         [
             "ffprobe",
             "-v",
@@ -65,9 +83,6 @@ def montar_audio(wavs: Sequence[bytes], pausa_ms: int, destino: Path) -> float:
             "-of",
             "default=nw=1:nk=1",
             str(destino),
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
+        ]
     )
-    return float(saida.stdout.strip())
+    return float(saida.stdout.decode().strip())

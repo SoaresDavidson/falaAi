@@ -39,6 +39,11 @@ def test_feed_enclosure_e_shownotes():
     assert enc.get("url") == "http://host:8000/episodes/falaai-2026-11-08-1.mp3"
     assert enc.get("type") == "audio/mpeg"
     assert enc.get("length") == "1234"
+    ns = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd"}
+    primeiro = itens[0]
+    assert primeiro.find("guid").text == "falaai-2026-11-08-1.mp3"
+    assert primeiro.find("itunes:duration", ns).text == "61"
+    assert primeiro.find("pubDate").text == "Sun, 08 Nov 2026 07:00:00 +0000"
     desc = itens[0].find("description").text
     assert 'href="https://a.com"' in desc
     assert "sem" in desc
