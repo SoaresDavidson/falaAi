@@ -1,6 +1,8 @@
 import base64
 from pathlib import Path
 
+import pytest
+
 from falaai.gmail import GmailFonte, newsletter_de_mime
 
 FIX = Path(__file__).parent / "fixtures"
@@ -201,3 +203,14 @@ def test_pendentes_isola_mensagem_ruim(tmp_path):
     svc.get = get
     res = GmailFonte(tmp_path / "t.json", "newsletter", 100, servico=svc).pendentes()
     assert [n.gmail_id for n in res] == ["c", "a"]
+
+
+def test_pendentes_todas_falham_levanta(tmp_path):
+    svc = FakeServico({None: {"messages": [{"id": "a"}, {"id": "b"}]}}, {})
+
+    def get(**kw):
+        raise ValueError("quebrou")
+
+    svc.get = get
+    with pytest.raises(RuntimeError):
+        GmailFonte(tmp_path / "t.json", "newsletter", 100, servico=svc).pendentes()

@@ -92,3 +92,48 @@ def test_falha_no_tratamento_ainda_conta_erro(store, monkeypatch):
     runner.aguardar(5)
     assert reg.get_sample_value("falaai_jobs_total", {"status": "erro"}) == 1
     assert reg.get_sample_value("falaai_job_em_andamento") == 0
+
+
+def test_series_existem_antes_do_primeiro_job(store):
+    reg = CollectorRegistry()
+    JobRunner(store, lambda job: None, "m", registry=reg)
+    for s in JobStatus:
+        assert reg.get_sample_value("falaai_jobs_total", {"status": s.value}) == 0
+
+
+def test_novo_cria_job_mesmo_com_retomavel(store):
+    antigo = store.criar_job("m")
+    store.atualizar_job(antigo.id, status=JobStatus.ERRO, erro="boom", terminar=True)
+
+    def executar(job):
+        store.atualizar_job(job.id, status=JobStatus.SUCESSO, terminar=True)
+
+    runner = JobRunner(store, executar, "m", registry=CollectorRegistry())
+    job, retomado = runner.iniciar(novo=True)
+    runner.aguardar(5)
+    assert retomado is False
+    assert job.id != antigo.id
+    assert store.job(antigo.id).status == JobStatus.ERRO
+    assert store.job(antigo.id).erro == "boom"
+
+
+def test_novo_respeita_409(store):
+    evento = threading.Event()
+
+    def executar(job):
+        evento.wait(5)
+        store.atualizar_job(job.id, status=JobStatus.SUCESSO, terminar=True)
+
+    runner = JobRunner(store, executar, "m", registry=CollectorRegistry())
+    runner.iniciar()
+    with pytest.raises(JobEmAndamento):
+        runner.iniciar(novo=True)
+    evento.set()
+    runner.aguardar(5)
+
+
+def test_registrar_interrompidos_conta_erro(store):
+    reg = CollectorRegistry()
+    runner = JobRunner(store, lambda job: None, "m", registry=reg)
+    runner.registrar_interrompidos(2)
+    assert reg.get_sample_value("falaai_jobs_total", {"status": "erro"}) == 2

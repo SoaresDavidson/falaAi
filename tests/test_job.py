@@ -271,3 +271,26 @@ def test_feed_reescrito_ao_retomar_antes_de_arquivar(ambiente, monkeypatch):
     store.atualizar_job(job.id, status=JobStatus.RODANDO)
     executar_job(store.job(job.id), d)
     assert d.fonte.arquivados == ["n1", "n2"]
+
+
+def test_todas_extracoes_falham_levanta_e_mantem_vinculo(ambiente):
+    _, store, fonte, deps = ambiente
+    llm = FakeLlm([ValueError("a"), ValueError("b")])
+    job = store.criar_job(llm.modelo)
+    with pytest.raises(RuntimeError, match="b") as e:
+        executar_job(job, deps(llm))
+    assert isinstance(e.value.__cause__, ValueError)
+    assert [n.gmail_id for n in store.newsletters_do_job(job.id)] == ["n1", "n2"]
+    assert fonte.arquivados == []
+
+
+@pytest.mark.parametrize("codigo", [500, 404])
+def test_http_status_servidor_quebrado_propaga(ambiente, codigo):
+    _, store, _, deps = ambiente
+    req = httpx.Request("POST", "http://x")
+    erro = httpx.HTTPStatusError("x", request=req, response=httpx.Response(codigo, request=req))
+    llm = FakeLlm([erro])
+    job = store.criar_job(llm.modelo)
+    with pytest.raises(httpx.HTTPStatusError):
+        executar_job(job, deps(llm))
+    assert [n.gmail_id for n in store.newsletters_do_job(job.id)] == ["n1", "n2"]

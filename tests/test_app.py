@@ -100,3 +100,26 @@ def test_startup_marca_interrompidos(config, store):
     j = store.job(job.id)
     assert j.status == JobStatus.ERRO
     assert j.erro == "interrompido"
+
+
+def test_startup_conta_interrompido_como_erro(config, store):
+    store.criar_job("m")
+    reg = CollectorRegistry()
+    runner = JobRunner(store, lambda job: None, "m", registry=reg)
+    criar_app(config, runner, reg)
+    assert reg.get_sample_value("falaai_jobs_total", {"status": "erro"}) == 1
+
+
+def test_post_jobs_novo(config, store):
+    antigo = store.criar_job("m")
+    store.atualizar_job(antigo.id, status=JobStatus.ERRO, erro="boom", terminar=True)
+
+    def executar(job):
+        store.atualizar_job(job.id, status=JobStatus.SUCESSO, terminar=True)
+
+    client, runner = _app(config, store, executar)
+    r = client.post("/jobs?novo=1")
+    runner.aguardar(5)
+    assert r.status_code == 202
+    assert r.json()["retomado"] is False
+    assert r.json()["job_id"] != antigo.id

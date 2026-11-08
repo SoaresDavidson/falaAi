@@ -125,6 +125,8 @@ class GmailFonte:
                 log.exception(
                     "Falha ao processar a mensagem %s; ela continua na caixa de entrada", i
                 )
+        if ids and not out:
+            raise RuntimeError(f"todas as {len(ids)} mensagens falharam ao ser lidas")
         return sorted(out, key=lambda n: n.recebida_em)
 
     def arquivar(self, gmail_ids: Sequence[str]) -> None:

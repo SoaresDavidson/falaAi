@@ -132,26 +132,44 @@ def _coletar(job: Job, deps: Dependencias) -> bool:
 
 
 def _extrair(job: Job, deps: Dependencias) -> list[Item]:
-    """Uma Newsletter que falha na extração sai do Job e continua pendente no Gmail."""
+    """Uma Newsletter que falha na extração sai do Job e continua pendente no Gmail.
+
+    Se todas as tentadas falham, o problema é o LLM e não as Newsletters: o Job falha.
+    """
     itens: list[Item] = []
+    falhas: list[str] = []
+    tentativas = 0
+    ultimo_erro: Exception | None = None
     for newsletter in deps.store.newsletters_do_job(job.id):
         extraidos = deps.store.itens_extraidos(newsletter.gmail_id)
         if extraidos is None:
+            tentativas += 1
             try:
                 extraidos = extrair_itens(deps.llm, newsletter)
             except (httpx.NetworkError, httpx.ConnectTimeout):
                 # Laptop fora do ar não é culpa da Newsletter: o Job falha e é retomado.
                 raise
-            except Exception:
-                log.warning(
-                    "extração falhou; newsletter %s fica pendente",
-                    newsletter.gmail_id,
-                    exc_info=True,
-                )
-                deps.store.desvincular_newsletter(job.id, newsletter.gmail_id)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code >= 500 or e.response.status_code == 404:
+                    raise  # servidor ou modelo quebrado, não a Newsletter
+                ultimo_erro = e
+                falhas.append(newsletter.gmail_id)
+                log.warning("extração falhou; newsletter %s", newsletter.gmail_id, exc_info=True)
+                continue
+            except Exception as e:
+                ultimo_erro = e
+                falhas.append(newsletter.gmail_id)
+                log.warning("extração falhou; newsletter %s", newsletter.gmail_id, exc_info=True)
                 continue
             deps.store.salvar_itens(newsletter.gmail_id, extraidos)
         itens.extend(extraidos)
+    if tentativas and len(falhas) == tentativas and not itens:
+        raise RuntimeError(
+            f"extração falhou em todas as {tentativas} newsletters: "
+            f"{type(ultimo_erro).__name__}: {ultimo_erro}"
+        ) from ultimo_erro
+    for gmail_id in falhas:
+        deps.store.desvincular_newsletter(job.id, gmail_id)
     return itens
 
 

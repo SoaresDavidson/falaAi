@@ -37,11 +37,11 @@ def criar_app(
         )
     registry = registry if registry is not None else runner.registry
     store = runner.store
-    store.marcar_interrompidos()
+    runner.registrar_interrompidos(store.marcar_interrompidos())
 
     async def post_jobs(request: Request) -> Response:
         try:
-            job, retomado = runner.iniciar()
+            job, retomado = runner.iniciar(novo=request.query_params.get("novo") == "1")
         except JobEmAndamento:
             return JSONResponse({"erro": "job em andamento"}, status_code=409)
         return JSONResponse({"job_id": job.id, "retomado": retomado}, status_code=202)

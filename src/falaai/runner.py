@@ -46,12 +46,19 @@ class JobRunner:
             registry=self.registry,
         )
         self._em_andamento.set(0)
+        # Séries nascem em 0: increase() precisa ver o primeiro erro depois do start.
+        for s in JobStatus:
+            self._jobs.labels(status=s.value)
 
-    def iniciar(self) -> tuple[Job, bool]:
+    def registrar_interrompidos(self, n: int) -> None:
+        if n:
+            self._jobs.labels(status=JobStatus.ERRO.value).inc(n)
+
+    def iniciar(self, novo: bool = False) -> tuple[Job, bool]:
         with self._lock:
             if self._thread is not None and self._thread.is_alive():
                 raise JobEmAndamento()
-            job = self.store.job_retomavel()
+            job = None if novo else self.store.job_retomavel()
             retomado = job is not None
             if job is None:
                 job = self.store.criar_job(self._modelo)

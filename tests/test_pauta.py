@@ -1,3 +1,5 @@
+import pytest
+
 from falaai.roteiro.pauta import montar_pauta
 from tests.fakes import FakeLlm, item
 
@@ -69,7 +71,19 @@ def test_bool_e_nulos_tratados():
             }
         ]
     )
-    pauta = montar_pauta(llm, itens, 2250)
-    assert pauta.topicos == ()
-    assert pauta.fora_do_audio == (itens[0],)
-    assert montar_pauta(FakeLlm([{"topicos": None}]), itens, 2250).topicos == ()
+    with pytest.raises(ValueError):
+        montar_pauta(llm, itens, 2250)
+    with pytest.raises(ValueError):
+        montar_pauta(FakeLlm([{"topicos": None}]), itens, 2250)
+
+
+def test_pauta_vazia_levanta():
+    itens = [item("a")]
+    with pytest.raises(ValueError):
+        montar_pauta(FakeLlm([{"topicos": []}]), itens, 2250)
+    with pytest.raises(ValueError):
+        montar_pauta(
+            FakeLlm([{"topicos": [{"titulo": "X", "indices": [0], "palavras_alvo": 9999}]}]),
+            itens,
+            1000,
+        )

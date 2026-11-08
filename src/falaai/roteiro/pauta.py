@@ -63,6 +63,9 @@ def montar_pauta(llm: Llm, itens: Sequence[Item], palavras_max: int) -> Pauta:
     while topicos and sum(t.palavras_alvo for t in topicos) > orcamento:
         topicos.pop()
 
+    if not topicos:
+        raise ValueError("pauta vazia: nenhum Tópico válido dentro do orçamento")
+
     mantidos = {id(it) for t in topicos for it in t.itens}
     fora = tuple(it for it in itens if id(it) not in mantidos)
     return Pauta(topicos=tuple(topicos), fora_do_audio=fora)

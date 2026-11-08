@@ -21,4 +21,4 @@ Newsletters do Gmail viram um podcast diário em pt-BR. O app roda em Docker no 
    Prometheus. Copie `deploy/grafana/falaai-alertas.yaml` para o provisioning de alerting do Grafana e
    reinicie o Grafana.
 7. Celular: assine o feed em `http://falaai.<tailnet>.ts.net:8000/feed.xml` (com a tailnet ativa).
-8. Uso: `curl -X POST http://falaai:8000/jobs`.
+8. Uso: `curl -X POST http://falaai:8000/jobs`; use `/jobs?novo=1` para descartar a retomada e criar um Job novo.
