@@ -1,0 +1,11 @@
+# Dispara o Job todo dia as 14h. Se o laptop estiver desligado ou dormindo,
+# dispara assim que ele voltar (Persistent).
+[Unit]
+Description=Fala Ai - Job diario as 14h
+
+[Timer]
+OnCalendar=*-*-* 14:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

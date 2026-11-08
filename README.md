@@ -44,6 +44,23 @@ curl -s http://100.74.37.102:8880/health
 
 Para o serviço subir no boot mesmo sem login: `sudo loginctl enable-linger $USER`.
 
+### 2b. Laptop: Job diário às 14h
+
+```bash
+cd ~/Projetos/falaAi
+TAILNET=$(tailscale status --json | grep -m1 -oP '"MagicDNSSuffix":\s*"\K[^.]+')
+sed "s|<tailnet>|$TAILNET|" deploy/laptop/falaai-job.service > ~/.config/systemd/user/falaai-job.service
+cp deploy/laptop/falaai-job.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now falaai-job.timer
+
+# Deve mostrar o próximo disparo às 14:00.
+systemctl --user list-timers falaai-job.timer
+```
+
+Se o laptop estiver desligado ou dormindo às 14h, o Job é disparado assim que ele voltar. Um Job
+que falhou é retomado no disparo seguinte; para disparar na hora: `systemctl --user start falaai-job`.
+
 ### 3. Laptop: autorizar o Gmail
 
 No Google Cloud Console, no projeto que você já tem em produção:
