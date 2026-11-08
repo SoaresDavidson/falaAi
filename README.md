@@ -20,7 +20,7 @@ sudo systemctl restart ollama
 
 # A partir de agora o CLI local também precisa do OLLAMA_HOST.
 export OLLAMA_HOST=100.74.37.102:11434
-ollama pull qwen3:30b-a3b-instruct-2507
+ollama pull qwen3:30b-a3b-instruct-2507-q4_K_M
 
 # Deve listar o modelo.
 curl -s http://100.74.37.102:11434/api/tags | grep qwen3

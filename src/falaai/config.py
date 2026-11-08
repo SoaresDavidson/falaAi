@@ -8,7 +8,7 @@ from pathlib import Path
 class Config:
     data_dir: Path = Path("/data")
     ollama_url: str = "http://100.74.37.102:11434"
-    ollama_modelo: str = "qwen3:30b-a3b-instruct-2507"
+    ollama_modelo: str = "qwen3:30b-a3b-instruct-2507-q4_K_M"
     tts_url: str = "http://100.74.37.102:8880"
     gmail_rotulo: str = "newsletter"
     gmail_token: Path = Path("/data/gmail-token.json")
