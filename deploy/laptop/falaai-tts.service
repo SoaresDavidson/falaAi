@@ -1,0 +1,16 @@
+# Unit systemd --user do serviço TTS (Kokoro) do laptop.
+# O Kokoro pt-BR precisa de `espeak-ng` instalado no sistema.
+# Ajuste WorkingDirectory para o diretório do repositório.
+[Unit]
+Description=Fala Ai - servico TTS Kokoro
+# Tenta para sempre ate o Tailscale subir.
+StartLimitIntervalSec=0
+
+[Service]
+WorkingDirectory=%h/Projetos/falaAi
+ExecStart=%h/.local/bin/uv run --extra tts falaai tts-serve --host 100.74.37.102 --port 8880
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
