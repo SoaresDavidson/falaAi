@@ -1,0 +1,92 @@
+# Copie para .../prometheus/grafana/provisioning/alerting/ no servidor.
+# Os alertas usam a politica raiz ja existente (contact point `discord`, ja provisionado no servidor).
+# Datasource uid `prometheus` confirmado em provisioning/datasources/prometheus.yml.
+# Em provisionamento o Grafana expande ${VAR}; $labels/$values precisam de $$.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: falaai
+    folder: Fala Ai
+    interval: 1m
+    rules:
+      - uid: falaai-job-falhou
+        title: Job do Fala Aí falhou
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: increase(falaai_jobs_total{status="erro"}[10m]) > 0
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: "Um Job terminou em erro nos ultimos 10 minutos."
+
+      - uid: falaai-job-travado
+        title: Job travado há mais de 2h
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: falaai_job_em_andamento == 1 and (time() - falaai_job_iniciado_timestamp_seconds) > 7200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Job em andamento ha mais de 2h. Confira o laptop (Ollama e TTS)."
+
+      - uid: falaai-fora-do-ar
+        title: Fala Aí fora do ar
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: up{job="falaai"} == 0
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: "O Prometheus nao consegue coletar o Fala Ai ha 5 minutos."

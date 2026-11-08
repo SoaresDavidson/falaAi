@@ -1,6 +1,6 @@
 # Servidor orquestra; laptop fornece LLM e TTS por HTTP
 
-O servidor (`jessejamesserver`, i7-4980HQ, 15 GB de RAM, sem GPU utilizável, ~8 GB livres com 53 containers e sem swap) não roda modelos bons: um LLM de ~8B em CPU é lento e mediano, e qualquer coisa maior arrisca acionar o OOM killer sobre outros serviços. O laptop (RTX 4070 com 8 GB de VRAM e 30 GB de RAM) roda bem o `qwen3:30b-a3b-instruct-2507` e o Kokoro. Decidimos que o servidor é o único dono do estado e da orquestração (app Python em Docker, SQLite, feed, métricas), e chama o Ollama e um serviço Kokoro nativos do laptop pela Tailscale, ambos com bind só no IP Tailscale.
+O servidor (`jessejamesserver`, i7-4980HQ, 15 GB de RAM, sem GPU utilizável, ~8 GB livres com 53 containers e sem swap) não roda modelos bons: um LLM de ~8B em CPU é lento e mediano, e qualquer coisa maior arrisca acionar o OOM killer sobre outros serviços. O laptop (RTX 4070 com 8 GB de VRAM e 30 GB de RAM) roda bem o `qwen3:30b-a3b-instruct-2507-q4_K_M` e o Kokoro. Decidimos que o servidor é o único dono do estado e da orquestração (app Python em Docker, SQLite, feed, métricas), e chama o Ollama e um serviço Kokoro nativos do laptop pela Tailscale, ambos com bind só no IP Tailscale.
 
 ## Considered Options
 
