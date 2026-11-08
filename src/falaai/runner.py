@@ -68,29 +68,37 @@ class JobRunner:
 
     def _rodar(self, job: Job) -> None:
         try:
-            try:
-                self._executar(job)
-                if self.store.job(job.id).status == JobStatus.RODANDO:
-                    self.store.atualizar_job(
-                        job.id,
-                        status=JobStatus.ERRO,
-                        erro="terminou sem estado final",
-                        terminar=True,
-                    )
-            except Exception as e:
-                log.exception("Job %s falhou", job.id)
-                self.store.atualizar_job(
-                    job.id,
-                    status=JobStatus.ERRO,
-                    erro=f"{type(e).__name__}: {e}",
-                    terminar=True,
-                )
-            status = self.store.job(job.id).status
+            self._executar_e_finalizar(job)
+            status = self._status_final(job)
             self._jobs.labels(status=status.value).inc()
             if status == JobStatus.SUCESSO:
                 self._sucesso.set(time.time())
         finally:
             self._em_andamento.set(0)
+
+    def _executar_e_finalizar(self, job: Job) -> None:
+        try:
+            self._executar(job)
+            erro = None
+            if self.store.job(job.id).status == JobStatus.RODANDO:
+                erro = "terminou sem estado final"
+        except Exception as e:
+            log.exception("Job %s falhou", job.id)
+            erro = f"{type(e).__name__}: {e}"
+        if erro is None:
+            return
+        try:
+            self.store.atualizar_job(job.id, status=JobStatus.ERRO, erro=erro, terminar=True)
+        except Exception:
+            log.exception("Job %s: falha ao gravar estado de erro", job.id)
+
+    def _status_final(self, job: Job) -> JobStatus:
+        try:
+            status = self.store.job(job.id).status
+        except Exception:
+            log.exception("Job %s: falha ao ler estado final", job.id)
+            return JobStatus.ERRO
+        return JobStatus.ERRO if status == JobStatus.RODANDO else status
 
     def aguardar(self, timeout: float) -> None:
         t = self._thread
