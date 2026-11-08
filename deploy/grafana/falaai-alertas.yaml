@@ -1,7 +1,8 @@
 # Copie para .../prometheus/grafana/provisioning/alerting/ no servidor.
 # Os alertas usam a politica raiz ja existente (contact point `discord`, ja provisionado no servidor).
 # Datasource uid `prometheus` confirmado em provisioning/datasources/prometheus.yml.
-# Em provisionamento o Grafana expande ${VAR}; $labels/$values precisam de $$.
+# Em provisionamento o Grafana expande ${VAR} e $VAR, e o escape $$ chega literal ao template:
+# nos templates, use .Labels e .Values em vez de $labels e $values.
 apiVersion: 1
 
 groups:
