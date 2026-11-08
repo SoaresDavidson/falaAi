@@ -45,9 +45,10 @@ class _Exec:
 
 
 class FakeServico:
-    def __init__(self, paginas, brutos):
+    def __init__(self, paginas, brutos, rotulos=()):
         self.paginas = paginas
         self.brutos = brutos
+        self.rotulos = list(rotulos)
         self.chamadas = []
 
     def users(self):
@@ -57,6 +58,9 @@ class FakeServico:
         return self
 
     def list(self, **kw):
+        if "q" not in kw:  # labels().list
+            self.chamadas.append(("labels.list", kw))
+            return _Exec({"labels": self.rotulos})
         self.chamadas.append(("list", kw))
         return _Exec(self.paginas[kw.get("pageToken")])
 
@@ -64,6 +68,13 @@ class FakeServico:
         self.chamadas.append(("get", kw))
         raw = base64.urlsafe_b64encode(self.brutos[kw["id"]]).decode()
         return _Exec({"id": kw["id"], "raw": raw})
+
+    def labels(self):
+        return self
+
+    def create(self, **kw):
+        self.chamadas.append(("create", kw))
+        return _Exec({"id": "Label_novo", **kw["body"]})
 
     def batchModify(self, **kw):
         self.chamadas.append(("batchModify", kw))
@@ -90,19 +101,31 @@ def test_pendentes_pagina_e_ordena(tmp_path):
     res = fonte.pendentes()
     assert [n.gmail_id for n in res] == ["b", "c", "a"]
     lists = [kw for nome, kw in svc.chamadas if nome == "list"]
-    assert all(kw["q"] == "label:newsletter in:inbox" for kw in lists)
+    assert all(kw["q"] == "label:newsletter -label:falaai-processada" for kw in lists)
     assert all(kw["format"] == "raw" for nome, kw in svc.chamadas if nome == "get")
 
 
-def test_arquivar_remove_inbox(tmp_path):
-    svc = FakeServico({}, {})
+def test_arquivar_aplica_rotulo_existente(tmp_path):
+    rotulos = [{"id": "Label_1", "name": "newsletter"}, {"id": "Label_2", "name": "falaai-processada"}]
+    svc = FakeServico({}, {}, rotulos)
     fonte = GmailFonte(tmp_path / "t.json", "newsletter", 1000, servico=svc)
     fonte.arquivar([])
     assert svc.chamadas == []
     fonte.arquivar(["a", "b"])
-    ((nome, kw),) = svc.chamadas
-    assert nome == "batchModify"
-    assert kw["body"] == {"ids": ["a", "b"], "removeLabelIds": ["INBOX"]}
+    assert [nome for nome, _ in svc.chamadas] == ["labels.list", "batchModify"]
+    assert svc.chamadas[-1][1]["body"] == {
+        "ids": ["a", "b"],
+        "addLabelIds": ["Label_2"],
+        "removeLabelIds": ["INBOX"],
+    }
+
+
+def test_arquivar_cria_rotulo_que_falta(tmp_path):
+    svc = FakeServico({}, {}, [{"id": "Label_1", "name": "newsletter"}])
+    GmailFonte(tmp_path / "t.json", "newsletter", 1000, servico=svc).arquivar(["a"])
+    assert [nome for nome, _ in svc.chamadas] == ["labels.list", "create", "batchModify"]
+    assert svc.chamadas[1][1]["body"]["name"] == "falaai-processada"
+    assert svc.chamadas[2][1]["body"]["addLabelIds"] == ["Label_novo"]
 
 
 def _eml_bruto(cabecalhos: str, corpo: str = "corpo") -> bytes:
@@ -223,12 +246,16 @@ def test_consulta_janela_e_dia():
     from falaai.gmail import consulta
 
     sp = ZoneInfo("America/Sao_Paulo")
-    base = "label:newsletter in:inbox"
-    assert consulta("newsletter", None, 0, sp) == base
-    assert consulta("newsletter", None, 2, sp) == f"{base} newer_than:2d"
+    base = "label:newsletter -label:falaai-processada"
+    assert consulta("newsletter", "falaai-processada", None, 0, sp) == base
+    assert consulta("newsletter", "falaai-processada", None, 2, sp) == f"{base} newer_than:2d"
     # 06/11/2026 00:00 e 07/11/2026 00:00 em São Paulo (UTC-3); o dia ignora a janela.
-    assert consulta("newsletter", date(2026, 11, 6), 2, sp) == (
+    assert consulta("newsletter", "falaai-processada", date(2026, 11, 6), 2, sp) == (
         f"{base} after:1793934000 before:1794020400"
+    )
+    # Rótulo aninhado ou com espaço: a busca usa "-" no lugar.
+    assert consulta("News Letters", "falaai/processada", None, 0, sp) == (
+        "label:News-Letters -label:falaai-processada"
     )
 
 

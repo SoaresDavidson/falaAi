@@ -4,5 +4,5 @@ Em vez de uma única chamada de LLM com todas as Newsletters, o Roteiro é gerad
 
 ## Consequences
 
-- As Newsletters só são arquivadas no Gmail depois de o Episódio ser publicado. Uma falha em qualquer estágio deixa as Newsletters pendentes e visíveis na Caixa de entrada.
-- O app usa o escopo `gmail.modify`, e não o `gmail.readonly`, exclusivamente para poder arquivar.
+- As Newsletters só são marcadas como processadas no Gmail depois de o Episódio ser publicado (ADR-0004). Uma falha em qualquer estágio deixa as Newsletters pendentes.
+- O app usa o escopo `gmail.modify`, e não o `gmail.readonly`, exclusivamente para poder marcá-las como processadas.
