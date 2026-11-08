@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     iniciado_em TEXT NOT NULL,
     terminado_em TEXT,
     modelo TEXT NOT NULL,
-    erro TEXT
+    erro TEXT,
+    dia TEXT
 );
 CREATE TABLE IF NOT EXISTS job_newsletters (
     job_id INTEGER NOT NULL,
@@ -88,6 +89,9 @@ class Store:
             self._db.execute("PRAGMA journal_mode=WAL")
             self._db.execute("PRAGMA busy_timeout=5000")
             self._db.executescript(SCHEMA)
+            colunas = {r["name"] for r in self._db.execute("PRAGMA table_info(jobs)")}
+            if "dia" not in colunas:  # banco criado antes do `?dia=`
+                self._db.execute("ALTER TABLE jobs ADD COLUMN dia TEXT")
 
     def _run(self, sql: str, params: Sequence = ()) -> sqlite3.Cursor:
         with self._lock, self._db:
@@ -112,12 +116,19 @@ class Store:
             modelo=r["modelo"],
             terminado_em=(datetime.fromisoformat(r["terminado_em"]) if r["terminado_em"] else None),
             erro=r["erro"],
+            dia=date.fromisoformat(r["dia"]) if r["dia"] else None,
         )
 
-    def criar_job(self, modelo: str) -> Job:
+    def criar_job(self, modelo: str, dia: date | None = None) -> Job:
         cur = self._run(
-            "INSERT INTO jobs (status, estagio, iniciado_em, modelo) VALUES (?,?,?,?)",
-            (JobStatus.RODANDO.value, Estagio.COLETA.value, _agora(), modelo),
+            "INSERT INTO jobs (status, estagio, iniciado_em, modelo, dia) VALUES (?,?,?,?,?)",
+            (
+                JobStatus.RODANDO.value,
+                Estagio.COLETA.value,
+                _agora(),
+                modelo,
+                dia.isoformat() if dia else None,
+            ),
         )
         return self.job(cur.lastrowid)
 

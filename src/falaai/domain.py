@@ -97,3 +97,4 @@ class Job:
     modelo: str
     terminado_em: datetime | None = None
     erro: str | None = None
+    dia: date | None = None  # coleta só as Newsletters recebidas neste dia

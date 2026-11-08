@@ -214,3 +214,29 @@ def test_pendentes_todas_falham_levanta(tmp_path):
     svc.get = get
     with pytest.raises(RuntimeError):
         GmailFonte(tmp_path / "t.json", "newsletter", 100, servico=svc).pendentes()
+
+
+def test_consulta_janela_e_dia():
+    from datetime import date
+    from zoneinfo import ZoneInfo
+
+    from falaai.gmail import consulta
+
+    sp = ZoneInfo("America/Sao_Paulo")
+    base = "label:newsletter in:inbox"
+    assert consulta("newsletter", None, 0, sp) == base
+    assert consulta("newsletter", None, 2, sp) == f"{base} newer_than:2d"
+    # 06/11/2026 00:00 e 07/11/2026 00:00 em São Paulo (UTC-3); o dia ignora a janela.
+    assert consulta("newsletter", date(2026, 11, 6), 2, sp) == (
+        f"{base} after:1793934000 before:1794020400"
+    )
+
+
+def test_pendentes_usa_dia(tmp_path):
+    from datetime import date
+
+    svc = FakeServico({None: {"messages": []}}, {})
+    fonte = GmailFonte(tmp_path / "t.json", "newsletter", 1000, servico=svc, janela_dias=2)
+    assert fonte.pendentes(date(2026, 11, 6)) == []
+    ((_, kw),) = svc.chamadas
+    assert "after:" in kw["q"] and "newer_than" not in kw["q"]

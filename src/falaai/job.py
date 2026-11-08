@@ -8,6 +8,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -50,12 +51,20 @@ def montar_dependencias(config: Config) -> Dependencias:
     from falaai.tts import KokoroTts
 
     config.episodios_dir.mkdir(parents=True, exist_ok=True)
+    fuso = ZoneInfo(config.fuso)
     return Dependencias(
         store=Store(config.db_path),
-        fonte=GmailFonte(config.gmail_token, config.gmail_rotulo, config.texto_max_chars),
+        fonte=GmailFonte(
+            config.gmail_token,
+            config.gmail_rotulo,
+            config.texto_max_chars,
+            janela_dias=config.gmail_janela_dias,
+            fuso=fuso,
+        ),
         llm=OllamaLlm(config.ollama_url, config.ollama_modelo),
         tts=KokoroTts(config.tts_url),
         config=config,
+        hoje=lambda: datetime.now(fuso).date(),
     )
 
 
@@ -127,7 +136,7 @@ def executar_job(job: Job, deps: Dependencias) -> None:
 
 def _coletar(job: Job, deps: Dependencias) -> bool:
     if not deps.store.newsletters_do_job(job.id):
-        deps.store.vincular_newsletters(job.id, deps.fonte.pendentes())
+        deps.store.vincular_newsletters(job.id, deps.fonte.pendentes(job.dia))
     return bool(deps.store.newsletters_do_job(job.id))
 
 

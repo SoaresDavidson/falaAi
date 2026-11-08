@@ -13,6 +13,7 @@ dependencies = [
     "beautifulsoup4",
     "feedgen",
     "prometheus-client",
+    "tzdata",
 ]
 
 [project.optional-dependencies]
